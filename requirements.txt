@@ -4,3 +4,4 @@ pandas
 dash_bootstrap_components
 gunicorn
 pathlib
+openpyxl
