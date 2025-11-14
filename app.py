@@ -4,7 +4,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.stats import skew, kurtosis, norm
 import plotly.express as px
-
+import dash
+from dash import Dash
 #Exploración de datos de acciones
 
 # Paso 1: Inicializar la app
