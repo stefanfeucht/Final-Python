@@ -7,7 +7,7 @@ import plotly.express as px
 
 #Exploración de datos de acciones
 
-path = "/Users/stefanfeucht/Documents/UFM/2025/Python for finance/Final.xlsx"
+path = "Final.xlsx"
 P_weeklyS = pd.read_excel(path, sheet_name="P WeeklyS")
 R_weeklyS = pd.read_excel(path, sheet_name="R WeeklyS")
 
@@ -135,7 +135,7 @@ def sharpe_ratio(series, rf=0.0, periods_per_year=52):
     return (ann_ret - rf) / ann_vol
 
 # === CARGA DE DATOS ===
-path = "/Users/stefanfeucht/Documents/UFM/2025/Python for finance/Final.xlsx"
+path = "Final.xlsx"
 R_weeklyS = pd.read_excel(path, sheet_name="R WeeklyS")
 R_weeklyS = fix_date_column(R_weeklyS)
 
@@ -211,8 +211,8 @@ fig.show()
 # === 1️⃣ CARGA Y LIMPIEZA DE DATOS ===
 
 # Cambia la ruta si es necesario
-P_weeklyC = pd.read_excel("/Users/stefanfeucht/Documents/UFM/2025/Python for finance/Final.xlsx", sheet_name="P WeeklyC")
-R_weeklyC = pd.read_excel("/Users/stefanfeucht/Documents/UFM/2025/Python for finance/Final.xlsx", sheet_name="R WeeklyC ")
+P_weeklyC = pd.read_excel("Final.xlsx", sheet_name="P WeeklyC")
+R_weeklyC = pd.read_excel("Final.xlsx", sheet_name="R WeeklyC ")
 
 for df in [P_weeklyC, R_weeklyC]:
     # Detectar y renombrar la columna de fecha
