@@ -7,6 +7,15 @@ import plotly.express as px
 
 #Exploración de datos de acciones
 
+# Paso 1: Inicializar la app
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+#Github:agregar linea de server que usa github
+server=app.server
+
+app.title = "Final Pithon"
+app.title = "Acciones"
+
 path = "Final.xlsx"
 P_weeklyS = pd.read_excel(path, sheet_name="P WeeklyS")
 R_weeklyS = pd.read_excel(path, sheet_name="R WeeklyS")
@@ -386,3 +395,7 @@ for c in cryptos:
 df_crypto = pd.DataFrame(metrics_crypto)
 print("\n📊 Métricas de riesgo - Criptomonedas:")
 print(df_crypto.round(5))
+
+
+if __name__ == "__main__":
+    app.run(debug=False, host="0.0.0.0",port=10000)
