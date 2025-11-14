@@ -212,7 +212,7 @@ fig.show()
 
 # Cambia la ruta si es necesario
 P_weeklyC = pd.read_excel("Final.xlsx", sheet_name="P WeeklyC")
-R_weeklyC = pd.read_excel("Final.xlsx", sheet_name="R WeeklyC")
+R_weeklyC = pd.read_excel("Final.xlsx", sheet_name="R WeeklyC ")
 
 for df in [P_weeklyC, R_weeklyC]:
     # Detectar y renombrar la columna de fecha
