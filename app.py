@@ -6,6 +6,8 @@ from scipy.stats import skew, kurtosis, norm
 import plotly.express as px
 import dash
 from dash import Dash
+from dash import Dash, html, dcc, dash_table
+from dash.dependencies import Input, Output
 #Exploración de datos de acciones
 
 # Paso 1: Inicializar la app
