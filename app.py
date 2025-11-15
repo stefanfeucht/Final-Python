@@ -1,133 +1,218 @@
-import os
-import pathlib
+# ======================================================
+#                FINAL PYTHON — DASH APP
+# ======================================================
+
 import pandas as pd
-import dash
+import numpy as np
+from scipy.stats import skew, kurtosis, norm
+
 import plotly.express as px
-from dash import Dash, html, dcc, dash_table
-from dash.dependencies import Input, Output
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+import dash
+from dash import Dash, dcc, html, dash_table
 import dash_bootstrap_components as dbc
+from dash.dependencies import Input, Output
 
-# ===========================
-#   Inicializar App
-# ===========================
+# ------------------------------------------------------
+# INICIALIZAR APP
+# ------------------------------------------------------
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server  # necesario para Render
-app.title = "Dashboard Financiero"
+server = app.server     # <- Para Render
 
-# ===========================
-#   Cargar Dataset (Render-safe)
-# ===========================
-DATA_PATH = pathlib.Path(__file__).parent.joinpath("empresas.csv")
+# ------------------------------------------------------
+# CARGAR ARCHIVOS DESDE EL REPO
+# ------------------------------------------------------
+EXCEL_PATH = "Final.xlsx"
+CRYPTO_PATH = "Crypto_historical_data.csv.gz"
 
-if not DATA_PATH.exists():
-    raise FileNotFoundError(f"❌ ERROR: No se encontró el archivo {DATA_PATH}")
+# Leer hojas del Excel
+P_weeklyS = pd.read_excel(EXCEL_PATH, sheet_name="P WeeklyS")
+R_weeklyS = pd.read_excel(EXCEL_PATH, sheet_name="R WeeklyS")
 
-df = pd.read_csv(DATA_PATH)
+P_weeklyC = pd.read_excel(EXCEL_PATH, sheet_name="P WeeklyC")
+R_weeklyC = pd.read_excel(EXCEL_PATH, sheet_name="R WeeklyC")
 
-sales_list = [
-    "Total Revenues", "Cost of Revenues", "Gross Profit", "Total Operating Expenses",
-    "Operating Income", "Net Income", "Shares Outstanding", "Close Stock Price",
-    "Market Cap", "Multiple of Revenue"
-]
+# ------------------------------------------------------
+# FUNCIONES AUXILIARES
+# ------------------------------------------------------
+def fix_date(df):
+    col = [c for c in df.columns if c.lower() in ("date", "fecha")][0]
+    df.rename(columns={col: "Date"}, inplace=True)
 
-# ===========================
-#         LAYOUT
-# ===========================
-app.layout = html.Div([
+    if np.issubdtype(df["Date"].dtype, np.number):
+        df["Date"] = pd.to_datetime("1899-12-30") + pd.to_timedelta(df["Date"], "D")
+    else:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 
-    html.H2("Dashboard Financiero", style={"textAlign": "center"}),
+    df.dropna(subset=["Date"], inplace=True)
+    df.sort_values("Date", inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    return df
 
-    html.Div([
-        html.Div(
-            dcc.Dropdown(
-                id="empresa-dropdown",
-                value=["Apple", "Tesla", "Microsoft", "Google"],
-                options=[{"label": x, "value": x} for x in sorted(df["Company"].unique())],
-                multi=True,
-                clearable=False
-            ),
-            style={"width": "50%"}
+P_weeklyS = fix_date(P_weeklyS)
+R_weeklyS = fix_date(R_weeklyS)
+P_weeklyC = fix_date(P_weeklyC)
+R_weeklyC = fix_date(R_weeklyC)
+
+# ------------------------------------------------------
+# TICKERS ACCIONES & CRIPTOS
+# ------------------------------------------------------
+stocks = [c for c in P_weeklyS.columns if c != "Date"]
+cryptos = [c for c in P_weeklyC.columns if c != "Date"]
+
+# ------------------------------------------------------
+# LAYOUT — 3 TABS
+# ------------------------------------------------------
+app.layout = dbc.Container([
+
+    html.H1("Dashboard Financiero — Final Python", className="text-center mt-4 mb-4"),
+
+    dcc.Tabs(id="tabs", value="tab-1", children=[
+        dcc.Tab(label="📈 Acciones (Precios y Retornos)", value="tab-1"),
+        dcc.Tab(label="📊 Distribuciones y Métricas", value="tab-2"),
+        dcc.Tab(label="💰 Criptomonedas", value="tab-3"),
+    ]),
+
+    html.Div(id="tabs-content", className="mt-4")
+
+], fluid=True)
+
+
+# ------------------------------------------------------
+# CALLBACK PRINCIPAL DE TABS
+# ------------------------------------------------------
+@app.callback(
+    Output("tabs-content", "children"),
+    Input("tabs", "value")
+)
+def render_tabs(tab):
+    if tab == "tab-1":
+        return layout_tab1()
+    elif tab == "tab-2":
+        return layout_tab2()
+    elif tab == "tab-3":
+        return layout_tab3()
+
+
+# ------------------------------------------------------
+# TAB 1 — ACCIONES
+# ------------------------------------------------------
+def layout_tab1():
+    return html.Div([
+
+        html.Label("Elige acción:"),
+        dcc.Dropdown(
+            id="stock-dropdown",
+            options=[{"label": s, "value": s} for s in stocks],
+            value=stocks[0],
+            clearable=False
         ),
 
-        html.Div(
-            dcc.Dropdown(
-                id="numericdropdown",
-                value="Total Revenues",
-                clearable=False,
-                options=[{"label": x, "value": x} for x in sales_list]
-            ),
-            style={"width": "50%"}
-        )
-    ], style={"display": "flex", "gap": "10px"}),
+        html.Label("Tipo de gráfica:", className="mt-3"),
+        dcc.Dropdown(
+            id="tipo-dropdown",
+            options=[
+                {"label": "Precio", "value": "P"},
+                {"label": "Retorno", "value": "R"}
+            ],
+            value="P",
+            clearable=False
+        ),
 
-    html.Br(),
+        dcc.Graph(id="graph-stock", className="mt-4")
+    ])
 
-    dcc.Graph(id="bar"),
-    dcc.Graph(id="boxplot"),
 
-    html.Div(id="table-container_1")
-])
-
-# ===========================
-#        CALLBACKS
-# ===========================
 @app.callback(
-    [
-        Output("bar", "figure"),
-        Output("boxplot", "figure"),
-        Output("table-container_1", "children")
-    ],
-    [
-        Input("empresa-dropdown", "value"),
-        Input("numericdropdown", "value")
-    ]
+    Output("graph-stock", "figure"),
+    [Input("stock-dropdown", "value"),
+     Input("tipo-dropdown", "value")]
 )
-def display_value(selected_stock, selected_numeric):
+def update_stock_graph(stock, tipo):
+    df = P_weeklyS if tipo == "P" else R_weeklyS
+    fig = px.line(df, x="Date", y=stock, title=f"{stock} — {'Precios' if tipo=='P' else 'Retornos'}")
+    fig.update_layout(template="plotly_white")
+    return fig
 
-    if not selected_stock or len(selected_stock) == 0:
-        selected_stock = ["Amazon", "Tesla", "Microsoft", "Apple", "Google"]
 
-    dfv_fltrd = df[df["Company"].isin(selected_stock)]
+# ------------------------------------------------------
+# TAB 2 — DISTRIBUCIONES
+# ------------------------------------------------------
+def layout_tab2():
+    return html.Div([
 
-    fig = px.line(
-        dfv_fltrd,
-        color="Company",
-        x="Quarter",
-        y=selected_numeric,
-        markers=True
-    )
+        html.Label("Elige acción:"),
+        dcc.Dropdown(
+            id="dist-stock",
+            options=[{"label": s, "value": s} for s in stocks],
+            value=stocks[0],
+            clearable=False
+        ),
 
-    fig.update_layout(
-        title=f"{selected_numeric} de {', '.join(selected_stock)}",
-        xaxis_title="Quarter"
-    )
+        dcc.Graph(id="hist-dist", className="mt-4"),
 
-    fig2 = px.box(
-        dfv_fltrd,
-        color="Company",
-        x="Company",
-        y=selected_numeric
-    )
+        html.H3("📉 Métricas de Riesgo", className="mt-4"),
+        dash_table.DataTable(id="tabla-metricas")
+    ])
 
-    fig2.update_layout(title=f"{selected_numeric} - Distribución por Empresa")
 
-    # Tabla
-    df_reshaped = dfv_fltrd.pivot(index="Company", columns="Quarter", values=selected_numeric)
-    df_reshaped2 = df_reshaped.reset_index()
+def calc_metrics(series):
+    return {
+        "Media": round(series.mean(), 5),
+        "Desv.Std": round(series.std(), 5),
+        "Curtosis": round(kurtosis(series, fisher=False), 5),
+        "Skewness": round(skew(series), 5),
+        "VaR 95%": round(np.percentile(series, 5), 5),
+        "CVaR 95%": round(series[series <= np.percentile(series, 5)].mean(), 5),
+        "Sharpe": round(series.mean() * 52 / (series.std() * np.sqrt(52)), 5)
+    }
 
-    table = dash_table.DataTable(
-        columns=[{"name": i, "id": i} for i in df_reshaped2.columns],
-        data=df_reshaped2.to_dict("records"),
-        export_format="csv",
-        style_cell={"fontSize": "12px"},
-        style_header={"backgroundColor": "blue", "color": "white", "fontWeight": "bold"}
-    )
 
-    return fig, fig2, table
+@app.callback(
+    [Output("hist-dist", "figure"),
+     Output("tabla-metricas", "data"),
+     Output("tabla-metricas", "columns")],
+    Input("dist-stock", "value")
+)
+def update_distribution(stock):
 
-# ===========================
-#       RUN SERVER
-# ===========================
+    series = R_weeklyS[stock].dropna()
+
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x=series, nbinsx=50, name="Histograma"))
+    x_vals = np.linspace(series.min(), series.max(), 200)
+    fig.add_trace(go.Scatter(x=x_vals,
+                             y=norm.pdf(x_vals, series.mean(), series.std()),
+                             mode="lines", name="Densidad"))
+    fig.update_layout(template="plotly_white",
+                      title=f"Distribución — {stock}")
+
+    m = calc_metrics(series)
+    columns = [{"name": k, "id": k} for k in m.keys()]
+    data = [m]
+
+    return fig, data, columns
+
+
+# ------------------------------------------------------
+# TAB 3 — CRIPTOS
+# ------------------------------------------------------
+def layout_tab3():
+
+    example_crypto = cryptos[0]
+
+    fig = px.line(P_weeklyC, x="Date", y=example_crypto,
+                  title=f"Precio histórico — {example_crypto}")
+
+    return html.Div([
+        dcc.Graph(figure=fig)
+    ])
+
+
+# ------------------------------------------------------
+# RUN
+# ------------------------------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8050))
-    app.run(debug=False, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000, debug=False)
