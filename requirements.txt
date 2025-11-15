@@ -1,6 +1,9 @@
 dash
 plotly.express
 pandas
+numpy
+plotly
+scipy
 dash_bootstrap_components
 gunicorn
 pathlib
