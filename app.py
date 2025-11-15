@@ -7,6 +7,7 @@ import plotly.express as px
 import dash
 from dash import Dash
 from dash import Dash, html, dcc, dash_table
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 #Exploración de datos de acciones
 
