@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 from scipy.stats import skew, kurtosis, norm
 import plotly.express as px
 import dash
-from dash import Dash
+
 from dash import Dash, html, dcc, dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
@@ -17,7 +17,7 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 #Github:agregar linea de server que usa github
 server=app.server
 
-app.title = "Final Pithon"
+app.title = "Final Python"
 app.title = "Acciones"
 
 path = "Final.xlsx"
